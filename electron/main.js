@@ -31,6 +31,10 @@ const {
 } = require('./env-config');
 const { loadPrefs, savePrefs } = require('./prefs');
 const { checkForUpdates } = require('./update-check');
+const { redactSecrets, mapErrorToRu } = require('./errors-ru');
+const { writeHtmlReport } = require('./report-html');
+const { loadSnapshot, saveSnapshot, summarizeForCompare, buildCompareText } = require('./compare');
+const { TASK_TEMPLATES } = require('./templates');
 const os = require('os');
 const pkg = require('../package.json');
 
@@ -182,8 +186,9 @@ function send(channel, payload) {
 }
 
 function sendLog(text) {
-  lastLogText += text;
-  send('agent-log', text);
+  const safe = redactSecrets(text);
+  lastLogText += safe;
+  send('agent-log', safe);
 }
 
 function sendProgress(label) {
@@ -285,6 +290,22 @@ async function runAgentCore({ projectPath, mode, customPrompt, maxFiles }) {
   return { ok: true, log: lastLogText };
 }
 
+
+async function finalizeReports({ projectPath, mode, logText }) {
+  const userData = app.getPath('userData');
+  const prev = loadSnapshot(userData, projectPath);
+  const summary = summarizeForCompare(logText);
+  const compareText = buildCompareText(prev, summary);
+  saveSnapshot(userData, projectPath, { mode, logText, summary });
+  let htmlFile = null;
+  try {
+    htmlFile = writeHtmlReport({ projectPath, mode, logText, compareText });
+  } catch (err) {
+    sendLog(`\n⚠️ HTML-отчёт не создан: ${mapErrorToRu(err)}\n`);
+  }
+  return { htmlFile, compareText };
+}
+
 ipcMain.handle('check-env', () => ({
   ...checkEnv(ENV_PATH),
   envPath: ENV_PATH,
@@ -377,6 +398,38 @@ ipcMain.handle('open-external', async (_e, payload = {}) => {
 });
 
 ipcMain.handle('get-history', () => loadHistory(app.getPath('userData')));
+
+ipcMain.handle('get-task-templates', () => TASK_TEMPLATES);
+
+ipcMain.handle('get-theme', () => {
+  const prefs = loadPrefs(app.getPath('userData'));
+  return { theme: prefs.theme || 'dark', largeFont: Boolean(prefs.largeFont) };
+});
+
+ipcMain.handle('set-theme', (_e, payload = {}) => {
+  const prefs = savePrefs(app.getPath('userData'), {
+    theme: payload.theme === 'light' ? 'light' : 'dark',
+    largeFont: Boolean(payload.largeFont),
+  });
+  return { ok: true, prefs };
+});
+
+ipcMain.handle('open-html-report', async (_e, payload = {}) => {
+  const file = payload.file;
+  if (!file || !fs.existsSync(file)) return { ok: false, error: 'HTML-отчёт не найден' };
+  await shell.openPath(file);
+  return { ok: true, file };
+});
+
+ipcMain.handle('select-folders', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory', 'multiSelections'],
+    title: 'Выберите папки проектов для очереди',
+  });
+  if (result.canceled || !result.filePaths?.length) return [];
+  return result.filePaths;
+});
+
 
 ipcMain.handle('select-folder', async () => {
   const result = await dialog.showOpenDialog(mainWindow, {
@@ -479,6 +532,56 @@ ipcMain.handle('confirm-push', async (_e, opts) => {
     sendLog(`\n⚠️ ${msg}\n`);
     return { ok: false, error: msg };
   }
+});
+
+ipcMain.handle('run-agent-queue', async (_event, options = {}) => {
+  const paths = Array.isArray(options.projectPaths) ? options.projectPaths.filter(Boolean) : [];
+  if (!paths.length) return { ok: false, error: 'Очередь пуста — добавьте проекты' };
+
+  const mode = options.mode || 'check';
+  const results = [];
+  cancelRequested = false;
+
+  for (let i = 0; i < paths.length; i += 1) {
+    const projectPath = paths[i];
+    if (cancelRequested) {
+      results.push({ projectPath, ok: false, error: 'Остановлено' });
+      break;
+    }
+    sendLog(`\n\n——— Очередь ${i + 1}/${paths.length}: ${projectPath} ———\n`);
+    sendProgress(`Очередь ${i + 1}/${paths.length}`);
+    try {
+      const core = await runAgentCore({
+        projectPath,
+        mode,
+        customPrompt: options.customPrompt,
+        maxFiles: options.maxFiles,
+      });
+      if (!core.ok) {
+        results.push({ projectPath, ok: false, error: core.error });
+        continue;
+      }
+      const finalized = await finalizeReports({
+        projectPath,
+        mode,
+        logText: lastLogText,
+      });
+      if (finalized.htmlFile) {
+        sendLog(`\n📄 HTML-отчёт: ${finalized.htmlFile}\n`);
+      }
+      results.push({
+        projectPath,
+        ok: true,
+        htmlReport: finalized.htmlFile || null,
+        compareText: finalized.compareText || null,
+      });
+    } catch (err) {
+      results.push({ projectPath, ok: false, error: mapErrorToRu(err) });
+    }
+  }
+
+  sendLog(`\n\n✅ Очередь завершена: ${results.filter((r) => r.ok).length}/${results.length}\n`);
+  return { ok: results.every((r) => r.ok), results };
 });
 
 ipcMain.handle('run-agent', async (_event, options) => {
@@ -591,15 +694,29 @@ ipcMain.handle('run-agent', async (_event, options) => {
       durationMs: Date.now() - startedAt,
     });
 
+    const finalized = await finalizeReports({
+      projectPath,
+      mode: effectiveMode,
+      logText: lastLogText,
+    });
+    if (finalized.compareText) {
+      sendLog(`\n\n📊 Сравнение с прошлой проверкой:\n${finalized.compareText}\n`);
+    }
+    if (finalized.htmlFile) {
+      sendLog(`\n📄 HTML-отчёт: ${finalized.htmlFile}\n(можно открыть и сохранить как PDF через Печать)\n`);
+      try { await shell.openPath(finalized.htmlFile); } catch { /* ignore */ }
+    }
     sendLog('\n\n✅ Готово.\n');
     return {
       ok: true,
       reportPath,
+      htmlReport: finalized.htmlFile || null,
+      compareText: finalized.compareText || null,
       diffPreview,
       needsPushConfirm: false,
     };
   } catch (err) {
-    const msg = err?.message || String(err);
+    const msg = mapErrorToRu(err);
     sendLog(`\n❌ Ошибка: ${msg}\n`);
     if (/invalid.*api.*key/i.test(msg)) {
       sendLog(

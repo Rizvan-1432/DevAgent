@@ -539,3 +539,85 @@ button.primary.is-running {
   padding: 8px 12px;
   font-size: 0.8rem;
 }
+
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(15, 17, 23, 0.92);
+  backdrop-filter: blur(8px);
+  padding-top: 4px;
+  margin: -4px -4px 12px;
+  padding-left: 4px;
+  padding-right: 4px;
+  border-bottom: 1px solid transparent;
+}
+body.theme-light {
+  background: #f4f6fb;
+  color: #0f172a;
+}
+body.theme-light .sticky-header { background: rgba(244, 246, 251, 0.92); }
+body.theme-light .subtitle,
+body.theme-light label,
+body.theme-light .hint,
+body.theme-light #progressLabel { color: #64748b; }
+body.theme-light input[type="text"],
+body.theme-light input[type="password"],
+body.theme-light textarea,
+body.theme-light select,
+body.theme-light input[type="number"],
+body.theme-light .mode,
+body.theme-light .checkbox,
+body.theme-light .settings,
+body.theme-light #log,
+body.theme-light .onboarding-card {
+  background: #fff;
+  color: #0f172a;
+  border-color: #dbe3f0;
+}
+body.theme-light button.secondary { background: #e2e8f0; color: #0f172a; }
+body.theme-light .app-status { background: #fff; color: #334155; }
+body.large-font { font-size: 17px; }
+body.large-font #log { font-size: 0.95rem; }
+.template-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.template-chip {
+  border: 1px solid #2a2f3d;
+  background: #1a1d27;
+  color: #e6e8ee;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+.template-chip:hover { border-color: #3b82f6; color: #bfdbfe; }
+body.theme-light .template-chip { background: #fff; color: #0f172a; border-color: #dbe3f0; }
+.queue-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+.queue-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  background: #1a1d27;
+  border: 1px solid #2a2f3d;
+  border-radius: 8px;
+  font-size: 0.82rem;
+}
+.queue-list button {
+  background: transparent;
+  border: 1px solid #475569;
+  color: #94a3b8;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+}

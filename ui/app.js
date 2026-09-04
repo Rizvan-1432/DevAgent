@@ -31,6 +31,14 @@ const btnCheckUpdates = document.getElementById('btnCheckUpdates');
 const btnCheckUpdatesTop = document.getElementById('btnCheckUpdatesTop');
 const btnShowOnboarding = document.getElementById('btnShowOnboarding');
 const appVersionEl = document.getElementById('appVersion');
+const btnTheme = document.getElementById('btnTheme');
+const btnFont = document.getElementById('btnFont');
+const templateList = document.getElementById('templateList');
+const queueList = document.getElementById('queueList');
+const btnAddQueue = document.getElementById('btnAddQueue');
+const btnClearQueue = document.getElementById('btnClearQueue');
+const btnRunQueue = document.getElementById('btnRunQueue');
+const btnOpenHtml = document.getElementById('btnOpenHtml');
 const onboardingOverlay = document.getElementById('onboardingOverlay');
 const obApiKey = document.getElementById('obApiKey');
 const obKeyMsg = document.getElementById('obKeyMsg');
@@ -429,6 +437,14 @@ btnStart.addEventListener('click', async () => {
     return;
   }
 
+  if (result.htmlReport) lastHtmlReport = result.htmlReport;
+  if (result.compareText) {
+    logEl.textContent += `
+
+📊 Сравнение с прошлой проверкой:
+${result.compareText}
+`;
+  }
   setRunning(false);
   finishRun(true);
   loadHistory();
@@ -648,3 +664,147 @@ async function bootExtras() {
 }
 
 bootExtras();
+
+
+let queuePaths = [];
+let lastHtmlReport = null;
+let themeState = { theme: 'dark', largeFont: false };
+
+function setModeValue(mode) {
+  const el = document.querySelector(`input[name="mode"][value="${mode}"]`);
+  if (el) {
+    el.checked = true;
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+}
+
+function renderQueue() {
+  queueList.innerHTML = '';
+  for (const p of queuePaths) {
+    const li = document.createElement('li');
+    const name = p.split(/[/\\]/).pop();
+    li.innerHTML = `<span title="${p}">${name}</span>`;
+    const rm = document.createElement('button');
+    rm.type = 'button';
+    rm.textContent = 'Убрать';
+    rm.addEventListener('click', () => {
+      queuePaths = queuePaths.filter((x) => x !== p);
+      renderQueue();
+    });
+    li.appendChild(rm);
+    queueList.appendChild(li);
+  }
+}
+
+async function loadTemplates() {
+  const list = await window.devAgent.getTaskTemplates();
+  templateList.innerHTML = '';
+  for (const t of list) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'template-chip';
+    btn.textContent = t.label;
+    btn.addEventListener('click', () => {
+      setModeValue(t.mode || 'custom');
+      if (t.prompt) {
+        document.getElementById('customPrompt').value = t.prompt;
+        customSection.classList.remove('hidden');
+      }
+      setAppStatus('idle', `Шаблон: ${t.label}`);
+    });
+    templateList.appendChild(btn);
+  }
+}
+
+function applyTheme() {
+  document.body.classList.toggle('theme-light', themeState.theme === 'light');
+  document.body.classList.toggle('theme-dark', themeState.theme !== 'light');
+  document.body.classList.toggle('large-font', themeState.largeFont);
+  if (btnTheme) btnTheme.textContent = themeState.theme === 'light' ? 'Тёмная' : 'Светлая';
+  if (btnFont) btnFont.textContent = themeState.largeFont ? 'A-' : 'A+';
+}
+
+async function loadTheme() {
+  themeState = await window.devAgent.getTheme();
+  applyTheme();
+}
+
+if (btnTheme) {
+  btnTheme.addEventListener('click', async () => {
+    themeState.theme = themeState.theme === 'light' ? 'dark' : 'light';
+    applyTheme();
+    await window.devAgent.setTheme(themeState);
+  });
+}
+
+if (btnFont) {
+  btnFont.addEventListener('click', async () => {
+    themeState.largeFont = !themeState.largeFont;
+    applyTheme();
+    await window.devAgent.setTheme(themeState);
+  });
+}
+
+if (btnAddQueue) {
+  btnAddQueue.addEventListener('click', async () => {
+    const folders = await window.devAgent.selectFolders();
+    for (const f of folders || []) {
+      if (!queuePaths.includes(f)) queuePaths.push(f);
+    }
+    if (projectPath && !queuePaths.includes(projectPath)) {
+      // keep current project optional
+    }
+    renderQueue();
+  });
+}
+
+if (btnClearQueue) {
+  btnClearQueue.addEventListener('click', () => {
+    queuePaths = [];
+    renderQueue();
+  });
+}
+
+if (btnRunQueue) {
+  btnRunQueue.addEventListener('click', async () => {
+    if (!queuePaths.length) {
+      logEl.textContent = '⚠️ Очередь пуста. Нажмите «Добавить в очередь».';
+      return;
+    }
+    const envNow = await window.devAgent.checkEnv();
+    if (!envNow.ok) {
+      logEl.textContent = '⚠️ Сначала сохраните Cursor API Key';
+      return;
+    }
+    setRunning(true);
+    logEl.textContent = `🚀 Очередь: ${queuePaths.length} проект(ов)\n`;
+    showProgress(`Очередь 1/${queuePaths.length}`);
+    const result = await window.devAgent.runAgentQueue(queuePaths, getMode(), getOptions());
+    setRunning(false);
+    if (result.results?.length) {
+      const lastOk = [...result.results].reverse().find((r) => r.htmlReport);
+      if (lastOk?.htmlReport) lastHtmlReport = lastOk.htmlReport;
+      for (const r of result.results) {
+        logEl.textContent += `\n${r.ok ? '✅' : '❌'} ${r.projectPath.split(/[/\\]/).pop()}${r.error ? ' — ' + r.error : ''}`;
+        if (r.compareText) logEl.textContent += `\n${r.compareText}\n`;
+      }
+    }
+    finishRun(Boolean(result.ok));
+    loadHistory();
+  });
+}
+
+if (btnOpenHtml) {
+  btnOpenHtml.addEventListener('click', async () => {
+    if (!lastHtmlReport) {
+      logEl.textContent += '\n⚠️ Сначала выполните проверку — HTML-отчёт появится после неё.\n';
+      return;
+    }
+    await window.devAgent.openHtmlReport(lastHtmlReport);
+  });
+}
+
+// remember html report from single runs
+loadTemplates();
+loadTheme();
+renderQueue();

@@ -9,13 +9,15 @@
 </head>
 <body>
   <div class="app">
-    <header>
+    <header class="sticky-header">
       <div class="header-row">
         <div>
           <h1>Dev Agent</h1>
           <p class="subtitle">Выберите проект → режим → Начать</p>
         </div>
         <div class="header-actions">
+          <button type="button" id="btnTheme" class="secondary header-update-btn" title="Тема">Тема</button>
+          <button type="button" id="btnFont" class="secondary header-update-btn" title="Крупный шрифт">A+</button>
           <button type="button" id="btnCheckUpdatesTop" class="secondary header-update-btn">Обновления</button>
           <div id="appStatus" class="app-status idle" aria-live="polite">
             <span class="status-dot" aria-hidden="true"></span>
@@ -97,13 +99,34 @@
         <label class="mode"><input type="radio" name="mode" value="monitoring" /> Мониторинг</label>
         <label class="mode"><input type="radio" name="mode" value="translate" /> Перевод</label>
         <label class="mode"><input type="radio" name="mode" value="analytics" /> Аналитика</label>
+        <label class="mode"><input type="radio" name="mode" value="release-checklist" /> Чеклист релиза</label>
+        <label class="mode"><input type="radio" name="mode" value="forms" /> Формы</label>
+        <label class="mode"><input type="radio" name="mode" value="freelance-tz" /> ТЗ</label>
+        <label class="mode"><input type="radio" name="mode" value="freelance-email" /> Письмо</label>
+        <label class="mode"><input type="radio" name="mode" value="freelance-estimate" /> Смета</label>
         <label class="mode"><input type="radio" name="mode" value="custom" /> Своя задача</label>
       </div>
+    </section>
+
+    <section class="templates">
+      <label>Шаблоны задач</label>
+      <div id="templateList" class="template-list"></div>
     </section>
 
     <section id="customSection" class="custom-task hidden">
       <label>Своя задача</label>
       <textarea id="customPrompt" rows="3" placeholder="Опишите что сделать..."></textarea>
+    </section>
+
+    <section class="queue">
+      <label>Очередь проектов</label>
+      <div class="row">
+        <button type="button" id="btnAddQueue" class="secondary">Добавить в очередь</button>
+        <button type="button" id="btnClearQueue" class="secondary">Очистить</button>
+        <button type="button" id="btnRunQueue" class="secondary">Запустить очередь</button>
+      </div>
+      <ul id="queueList" class="queue-list"></ul>
+      <p class="hint">Можно поставить несколько сайтов подряд и уйти — агент пройдёт их по очереди.</p>
     </section>
 
     <section class="options">
@@ -124,6 +147,7 @@
       </button>
       <button type="button" id="btnStop" class="danger" disabled>Стоп</button>
       <button type="button" id="btnSaveLog" class="secondary">Сохранить лог</button>
+      <button type="button" id="btnOpenHtml" class="secondary">HTML/PDF отчёт</button>
       <button type="button" id="btnRollback" class="secondary">Откат коммита</button>
       <button type="button" id="btnSyncSkills" class="secondary">Обновить skills</button>
     </div>

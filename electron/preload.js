@@ -23,6 +23,13 @@ contextBridge.exposeInMainWorld('devAgent', {
   checkUpdates: () => ipcRenderer.invoke('check-updates'),
   skipUpdate: (version) => ipcRenderer.invoke('skip-update', { version }),
   openExternal: (url) => ipcRenderer.invoke('open-external', { url }),
+  getTaskTemplates: () => ipcRenderer.invoke('get-task-templates'),
+  getTheme: () => ipcRenderer.invoke('get-theme'),
+  setTheme: (payload) => ipcRenderer.invoke('set-theme', payload),
+  selectFolders: () => ipcRenderer.invoke('select-folders'),
+  runAgentQueue: (projectPaths, mode, options) =>
+    ipcRenderer.invoke('run-agent-queue', { projectPaths, mode, ...options }),
+  openHtmlReport: (file) => ipcRenderer.invoke('open-html-report', { file }),
   onLog: (callback) => {
     ipcRenderer.on('agent-log', (_e, text) => callback(text));
   },

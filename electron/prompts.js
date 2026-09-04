@@ -7,10 +7,15 @@ const BASE = `Ты — Senior Full-Stack Dev Agent. Пользователь Н�
 Production-ready код. Fix critical security/issues.
 Следуй конвенциям открытого проекта.`;
 
+const REAUDIT = `
+ПОВТОРНАЯ ПРОВЕРКА: сначала прочитай DEV-AGENT-ОТЧЁТ.md / СТАТУС.md / SEO-ОТЧЁТ.md и git log.
+Не повторяй уже исправленное. Фокус только на новых критичных проблемах.`;
+
 const MODES = {
   check: `${BASE}
 
 ЗАДАЧА: Полная проверка проекта.
+${REAUDIT}
 1. npm run qa:patrol или bash ~/.cursor/scripts/qa-patrol.sh (если есть)
 2. Иначе npm test / pytest / go test по стеку
 3. Security: SQLi, XSS, secrets, auth
@@ -27,6 +32,20 @@ const MODES = {
 4. Fix critical
 5. Простой русский отчёт`,
 
+  'release-checklist': `${BASE}
+
+ЗАДАЧА: Чеклист релиза с галочками.
+Создай/обнови РЕЛИЗ-ЧЕКЛИСТ.md со статусами ✅/❌/⚠️ по пунктам:
+- HTTPS / редирект http→https
+- title + meta description на ключевых страницах
+- один логичный H1
+- sitemap.xml и robots.txt
+- страница 404
+- формы отправляются (или понятная ошибка)
+- нет секретов в клиентском бандле
+- build проходит
+Исправь то, что можешь быстро и безопасно. В конце таблица чеклиста.`,
+
   status: `${BASE}
 
 ЗАДАЧА: Статус проекта.
@@ -42,7 +61,9 @@ const MODES = {
   seo: `${BASE}
 
 ЗАДАЧА: SEO-оптимизация для Google (skill seo-audit).
-Meta, sitemap, robots, JSON-LD, OG, alt, Core Web Vitals. SEO-ОТЧЁТ.md. build.`,
+Meta, sitemap, robots, JSON-LD, OG, alt, Core Web Vitals.
+Если доступны browser tools — сделай скриншоты ключевых страниц (hero/мобильный) и приложи пути в SEO-ОТЧЁТ.md.
+SEO-ОТЧЁТ.md. build.`,
 
   'seo-content': `${BASE}
 
@@ -62,7 +83,19 @@ Technical SEO + улучши тексты hero/услуг/о нас. SEO-ОТЧ�
   monitoring: `${BASE}
 
 ЗАДАЧА: Мониторинг (skill monitoring-audit).
-Проверь prod URL, HTTPS, формы, sitemap. МОНИТОРИНГ.md.`,
+Проверь prod URL, HTTPS, формы, sitemap.
+Если есть browser tools — скриншот главной и формы. Автотест форм: отправь тестовые данные (без спама клиенту — используй honeypot/test endpoint если есть) и зафиксируй ответ.
+МОНИТОРИНГ.md.`,
+
+  forms: `${BASE}
+
+ЗАДАЧА: Автопроверка форм.
+Найди все формы (контакт, заявка, подписка). Проверь:
+- обязательные поля и сообщения ошибок
+- CSRF/honeypot если есть
+- успешный/ошибочный ответ API
+- доступность с клавиатуры
+Исправь критичное. ФОРМЫ-ОТЧЁТ.md.`,
 
   translate: `${BASE}
 
@@ -73,6 +106,33 @@ Technical SEO + улучши тексты hero/услуг/о нас. SEO-ОТЧ�
 
 ЗАДАЧА: Аналитика (skill analytics-setup).
 GA4/GTM через env, cookie consent EU, АНАЛИТИКА.md, Search Console инструкция.`,
+
+  'freelance-tz': `${BASE}
+
+ЗАДАЧА: Напиши ТЗ по заказу для фриланса.
+Изучи проект/контекст в папке. Создай ТЗ-ЗАКАЗ.md:
+- цель
+- объем работ
+- страницы/экраны
+- интеграции
+- сроки (оценка)
+- критерии приёмки
+Простым деловым русским.`,
+
+  'freelance-email': `${BASE}
+
+ЗАДАЧА: Письмо клиенту.
+На основе проекта/отчётов напиши ПИСЬМО-КЛИЕНТУ.md:
+- что сделано
+- что осталось
+- риски
+- следующий шаг и вопрос клиенту
+Тон: вежливо, коротко, без жаргона.`,
+
+  'freelance-estimate': `${BASE}
+
+ЗАДАЧА: Смета работ.
+Создай СМЕТА.md: этапы, часы/дни, что входит/не входит, допущения. Русский язык, таблица.`,
 };
 
 function getPrompt(mode, options = {}) {

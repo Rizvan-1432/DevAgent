@@ -1,6 +1,6 @@
 {
   "name": "dev-agent-app",
-  "version": "2.2.1",
+  "version": "2.3.0",
   "description": "Dev Agent desktop app",
   "main": "electron/main.js",
   "private": true,
@@ -9,7 +9,11 @@
     "start": "electron .",
     "build": "electron-builder --mac",
     "build:dir": "electron-builder --mac dir",
-    "postinstall": "node scripts/fix-rg.js"
+    "postinstall": "node scripts/fix-rg.js",
+    "test": "node --test test/*.test.js",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux",
+    "build:all": "electron-builder -mwl"
   },
   "dependencies": {
     "@cursor/sdk": "^1.0.0",
@@ -29,7 +33,11 @@
     },
     "mac": {
       "category": "public.app-category.developer-tools",
-      "target": ["dmg", "zip"]
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "identity": null
     },
     "files": [
       "electron/**/*",
@@ -38,6 +46,19 @@
       "build/icon.png",
       "package.json",
       ".env.example"
-    ]
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Development"
+    }
   }
 }
