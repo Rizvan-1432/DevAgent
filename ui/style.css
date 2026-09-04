@@ -426,3 +426,105 @@ button.primary.is-running {
     animation: none !important;
   }
 }
+
+.update-banner {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #172554;
+  border: 1px solid #3b82f6;
+  font-size: 0.82rem;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  color: #dbeafe;
+}
+.key-check-result { margin-top: 8px; min-height: 1.2em; }
+.key-check-result.ok { color: #86efac; }
+.key-check-result.bad { color: #fca5a5; }
+.app-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #1f2430;
+  color: #64748b;
+  font-size: 0.78rem;
+}
+.app-footer .link-btn { font-size: 0.72rem; padding: 3px 8px; }
+.onboarding {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(8, 10, 16, 0.78);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.onboarding-card {
+  width: min(520px, 100%);
+  background: #151822;
+  border: 1px solid #2a2f3d;
+  border-radius: 14px;
+  padding: 22px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+}
+.onboarding-kicker {
+  margin: 0 0 4px;
+  color: #93c5fd;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.onboarding-card h2 {
+  margin: 0 0 14px;
+  font-size: 1.25rem;
+}
+.onboarding-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 16px;
+}
+.ob-step {
+  text-align: center;
+  font-size: 0.75rem;
+  padding: 6px 4px;
+  border-radius: 999px;
+  background: #1a1d27;
+  color: #64748b;
+  border: 1px solid #2a2f3d;
+}
+.ob-step.active {
+  background: #1e3a8a;
+  border-color: #3b82f6;
+  color: #dbeafe;
+}
+.ob-panel p { margin: 0 0 10px; color: #cbd5e1; line-height: 1.45; }
+.ob-panel input[type="password"],
+.ob-panel input[type="text"] {
+  margin-bottom: 8px;
+}
+.ob-checklist {
+  margin: 0 0 16px;
+  padding-left: 0;
+  list-style: none;
+  color: #bbf7d0;
+  line-height: 1.7;
+}
+.ob-skip {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-align: center;
+}
+.ob-skip:hover { color: #94a3b8; }

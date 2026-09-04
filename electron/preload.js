@@ -15,6 +15,14 @@ contextBridge.exposeInMainWorld('devAgent', {
   openEnvFile: () => ipcRenderer.invoke('open-env-file'),
   getEnvSettings: () => ipcRenderer.invoke('get-env-settings'),
   saveEnvSettings: (payload) => ipcRenderer.invoke('save-env-settings', payload),
+  validateApiKey: (apiKey) => ipcRenderer.invoke('validate-api-key', { apiKey }),
+  getOnboardingState: () => ipcRenderer.invoke('get-onboarding-state'),
+  completeOnboarding: (payload) => ipcRenderer.invoke('complete-onboarding', payload),
+  resetOnboarding: () => ipcRenderer.invoke('reset-onboarding'),
+  getAppInfo: () => ipcRenderer.invoke('get-app-info'),
+  checkUpdates: () => ipcRenderer.invoke('check-updates'),
+  skipUpdate: (version) => ipcRenderer.invoke('skip-update', { version }),
+  openExternal: (url) => ipcRenderer.invoke('open-external', { url }),
   onLog: (callback) => {
     ipcRenderer.on('agent-log', (_e, text) => callback(text));
   },

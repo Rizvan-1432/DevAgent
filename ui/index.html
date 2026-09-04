@@ -22,6 +22,14 @@
       </div>
     </header>
 
+    <div id="updateBanner" class="update-banner hidden">
+      <span id="updateBannerText"></span>
+      <div class="banner-actions">
+        <button type="button" id="btnOpenUpdate" class="link-btn">Скачать</button>
+        <button type="button" id="btnSkipUpdate" class="link-btn ghost">Позже</button>
+      </div>
+    </div>
+
     <div id="envBanner" class="env-banner hidden">
       <span id="envBannerText"></span>
       <div class="banner-actions">
@@ -54,8 +62,10 @@
         </div>
         <div class="settings-actions">
           <button type="button" id="btnSaveSettings" class="primary">Сохранить ключи</button>
+          <button type="button" id="btnValidateKey" class="secondary">Проверить ключ</button>
           <span id="settingsSaved" class="hint"></span>
         </div>
+        <p id="keyCheckResult" class="key-check-result hint"></p>
       </div>
     </section>
 
@@ -135,6 +145,63 @@
       </div>
       <pre id="log">Здесь появится отчёт на русском...</pre>
     </section>
+
+    <footer class="app-footer">
+      <span id="appVersion">Dev Agent</span>
+      <button type="button" id="btnCheckUpdates" class="link-btn ghost">Проверить обновления</button>
+      <button type="button" id="btnShowOnboarding" class="link-btn ghost">Мастер настройки</button>
+    </footer>
+  </div>
+
+  <div id="onboardingOverlay" class="onboarding hidden" role="dialog" aria-modal="true" aria-labelledby="onboardTitle">
+    <div class="onboarding-card">
+      <p class="onboarding-kicker">Добро пожаловать</p>
+      <h2 id="onboardTitle">Настройка Dev Agent</h2>
+      <div class="onboarding-steps" id="onboardSteps">
+        <span class="ob-step active" data-step="1">1. API</span>
+        <span class="ob-step" data-step="2">2. Проект</span>
+        <span class="ob-step" data-step="3">3. Готово</span>
+      </div>
+
+      <div class="ob-panel" data-panel="1">
+        <p>Вставьте Cursor API Key. Без него агент не запустится.</p>
+        <p class="hint">Ключ: cursor.com → Settings → API Keys → Create API Key</p>
+        <input type="password" id="obApiKey" autocomplete="off" placeholder="Вставьте ключ Cursor…" />
+        <p id="obKeyMsg" class="key-check-result hint"></p>
+        <div class="modal-actions">
+          <button type="button" id="obValidate" class="secondary">Проверить ключ</button>
+          <button type="button" id="obSaveNext" class="primary">Сохранить и далее</button>
+        </div>
+      </div>
+
+      <div class="ob-panel hidden" data-panel="2">
+        <p>Выберите папку проекта, который нужно проверить.</p>
+        <div class="row">
+          <input type="text" id="obProjectPath" readonly placeholder="Папка не выбрана" />
+          <button type="button" id="obPickProject" class="secondary">Выбрать</button>
+        </div>
+        <p id="obProjectMsg" class="hint"></p>
+        <div class="modal-actions">
+          <button type="button" id="obBack1" class="secondary">Назад</button>
+          <button type="button" id="obNext2" class="primary">Далее</button>
+        </div>
+      </div>
+
+      <div class="ob-panel hidden" data-panel="3">
+        <p>Всё готово. Выберите режим и нажмите <strong>Начать</strong>.</p>
+        <ul class="ob-checklist">
+          <li>✅ API-ключ сохранён</li>
+          <li id="obCheckProject">✅ Проект выбран</li>
+          <li>✅ Можно запускать проверку</li>
+        </ul>
+        <div class="modal-actions">
+          <button type="button" id="obBack2" class="secondary">Назад</button>
+          <button type="button" id="obFinish" class="primary">Начать работу</button>
+        </div>
+      </div>
+
+      <button type="button" id="obSkip" class="ob-skip">Пропустить настройку</button>
+    </div>
   </div>
 
   <dialog id="diffModal">

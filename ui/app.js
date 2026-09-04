@@ -21,6 +21,21 @@ const settingsSaved = document.getElementById('settingsSaved');
 const cursorApiKeyEl = document.getElementById('cursorApiKey');
 const githubTokenEl = document.getElementById('githubToken');
 const vercelTokenEl = document.getElementById('vercelToken');
+const btnValidateKey = document.getElementById('btnValidateKey');
+const keyCheckResult = document.getElementById('keyCheckResult');
+const updateBanner = document.getElementById('updateBanner');
+const updateBannerText = document.getElementById('updateBannerText');
+const btnOpenUpdate = document.getElementById('btnOpenUpdate');
+const btnSkipUpdate = document.getElementById('btnSkipUpdate');
+const btnCheckUpdates = document.getElementById('btnCheckUpdates');
+const btnShowOnboarding = document.getElementById('btnShowOnboarding');
+const appVersionEl = document.getElementById('appVersion');
+const onboardingOverlay = document.getElementById('onboardingOverlay');
+const obApiKey = document.getElementById('obApiKey');
+const obKeyMsg = document.getElementById('obKeyMsg');
+const obProjectPath = document.getElementById('obProjectPath');
+const obProjectMsg = document.getElementById('obProjectMsg');
+const obCheckProject = document.getElementById('obCheckProject');
 const progressBar = document.getElementById('progressBar');
 const progressLabel = document.getElementById('progressLabel');
 const progressFill = document.getElementById('progressFill');
@@ -421,3 +436,198 @@ btnStart.addEventListener('click', async () => {
 loadEnvStatus();
 loadHistory();
 setAppStatus('idle', 'Готов');
+
+
+let pendingUpdate = null;
+let onboardStep = 1;
+let onboardProject = '';
+
+function setKeyMsg(el, ok, text) {
+  if (!el) return;
+  el.textContent = text || '';
+  el.classList.toggle('ok', Boolean(ok));
+  el.classList.toggle('bad', ok === false);
+}
+
+function setOnboardStep(step) {
+  onboardStep = step;
+  document.querySelectorAll('.ob-step').forEach((el) => {
+    el.classList.toggle('active', Number(el.dataset.step) === step);
+  });
+  document.querySelectorAll('.ob-panel').forEach((el) => {
+    el.classList.toggle('hidden', Number(el.dataset.panel) !== step);
+  });
+}
+
+function showOnboarding() {
+  onboardingOverlay.classList.remove('hidden');
+  setOnboardStep(1);
+  obKeyMsg.textContent = '';
+  obProjectMsg.textContent = '';
+}
+
+function hideOnboarding() {
+  onboardingOverlay.classList.add('hidden');
+}
+
+async function runKeyValidation(rawKey, msgEl, buttonEl) {
+  if (buttonEl) buttonEl.disabled = true;
+  setKeyMsg(msgEl, null, 'Проверяю ключ…');
+  try {
+    const result = await window.devAgent.validateApiKey(rawKey || '');
+    if (result.ok) {
+      setKeyMsg(msgEl, true, `✅ ${result.message || 'Ключ рабочий'}`);
+    } else {
+      setKeyMsg(msgEl, false, `❌ ${result.error || 'Ключ не прошёл проверку'}`);
+    }
+    return result;
+  } catch (err) {
+    setKeyMsg(msgEl, false, `❌ ${err.message || String(err)}`);
+    return { ok: false, error: err.message || String(err) };
+  } finally {
+    if (buttonEl) buttonEl.disabled = false;
+  }
+}
+
+btnValidateKey.addEventListener('click', async () => {
+  const typed = cursorApiKeyEl.value.trim();
+  // If typed, save first so validation uses the new key
+  if (typed) {
+    const save = await window.devAgent.saveEnvSettings({ cursorApiKey: typed });
+    if (!save.ok) {
+      setKeyMsg(keyCheckResult, false, save.error || 'Не удалось сохранить');
+      return;
+    }
+    cursorApiKeyEl.value = '';
+    await loadApiSettings();
+  }
+  await runKeyValidation('', keyCheckResult, btnValidateKey);
+});
+
+document.getElementById('obValidate').addEventListener('click', async () => {
+  await runKeyValidation(obApiKey.value.trim(), obKeyMsg, document.getElementById('obValidate'));
+});
+
+document.getElementById('obSaveNext').addEventListener('click', async () => {
+  const key = obApiKey.value.trim();
+  if (!key) {
+    setKeyMsg(obKeyMsg, false, 'Вставьте API-ключ');
+    return;
+  }
+  const save = await window.devAgent.saveEnvSettings({ cursorApiKey: key });
+  if (!save.ok) {
+    setKeyMsg(obKeyMsg, false, save.error || 'Не удалось сохранить');
+    return;
+  }
+  const check = await runKeyValidation('', obKeyMsg, document.getElementById('obSaveNext'));
+  if (!check.ok) return;
+  obApiKey.value = '';
+  await loadEnvStatus();
+  setOnboardStep(2);
+});
+
+document.getElementById('obPickProject').addEventListener('click', async () => {
+  const p = await window.devAgent.selectFolder();
+  if (!p) return;
+  onboardProject = p;
+  obProjectPath.value = p;
+  projectPath = p;
+  pathEl.value = p;
+  obProjectMsg.textContent = 'Папка выбрана';
+});
+
+document.getElementById('obBack1').addEventListener('click', () => setOnboardStep(1));
+document.getElementById('obBack2').addEventListener('click', () => setOnboardStep(2));
+
+document.getElementById('obNext2').addEventListener('click', () => {
+  if (!onboardProject && !projectPath) {
+    obProjectMsg.textContent = 'Можно пропустить, но лучше выбрать папку';
+  }
+  const chosen = onboardProject || projectPath;
+  obCheckProject.textContent = chosen
+    ? `✅ Проект: ${chosen.split(/[/\\]/).pop()}`
+    : '⚠️ Проект пока не выбран — выберите позже';
+  setOnboardStep(3);
+});
+
+document.getElementById('obFinish').addEventListener('click', async () => {
+  await window.devAgent.completeOnboarding({ projectPath: onboardProject || projectPath || '' });
+  hideOnboarding();
+  setAppStatus('idle', 'Готов');
+  logEl.textContent = '✅ Настройка завершена. Выберите режим и нажмите «Начать».';
+});
+
+document.getElementById('obSkip').addEventListener('click', async () => {
+  await window.devAgent.completeOnboarding({ projectPath: projectPath || '' });
+  hideOnboarding();
+});
+
+btnShowOnboarding.addEventListener('click', () => {
+  showOnboarding();
+});
+
+function showUpdateBanner(info) {
+  pendingUpdate = info;
+  updateBanner.classList.remove('hidden');
+  updateBannerText.textContent = `${info.message}${info.dmg ? ` · ${info.dmg.name}` : ''}`;
+}
+
+btnOpenUpdate.addEventListener('click', async () => {
+  const url = pendingUpdate?.dmg?.url || pendingUpdate?.releaseUrl || pendingUpdate?.releasesUrl;
+  if (url) await window.devAgent.openExternal(url);
+});
+
+btnSkipUpdate.addEventListener('click', async () => {
+  if (pendingUpdate?.latestVersion) {
+    await window.devAgent.skipUpdate(pendingUpdate.latestVersion);
+  }
+  updateBanner.classList.add('hidden');
+  pendingUpdate = null;
+});
+
+btnCheckUpdates.addEventListener('click', async () => {
+  btnCheckUpdates.disabled = true;
+  btnCheckUpdates.textContent = 'Проверяю…';
+  const info = await window.devAgent.checkUpdates();
+  btnCheckUpdates.disabled = false;
+  btnCheckUpdates.textContent = 'Проверить обновления';
+  if (info.updateAvailable) {
+    showUpdateBanner(info);
+    setAppStatus('done', `Обновление ${info.latestVersion}`);
+  } else if (info.ok) {
+    updateBanner.classList.add('hidden');
+    setAppStatus('idle', info.message || 'Актуальная версия');
+    logEl.textContent += `\n${info.message || 'Обновлений нет'}\n`;
+  } else {
+    setAppStatus('error', 'Обновление недоступно');
+    logEl.textContent += `\n⚠️ ${info.error || 'Не удалось проверить обновления'}\n`;
+    if (info.releasesUrl) {
+      logEl.textContent += `Релизы: ${info.releasesUrl}\n`;
+    }
+  }
+});
+
+async function bootExtras() {
+  try {
+    const info = await window.devAgent.getAppInfo();
+    appVersionEl.textContent = `Dev Agent v${info.version}`;
+  } catch {
+    appVersionEl.textContent = 'Dev Agent';
+  }
+
+  try {
+    const ob = await window.devAgent.getOnboardingState();
+    if (!ob.done) showOnboarding();
+  } catch {
+    /* ignore */
+  }
+
+  try {
+    const upd = await window.devAgent.checkUpdates();
+    if (upd.updateAvailable) showUpdateBanner(upd);
+  } catch {
+    /* ignore */
+  }
+}
+
+bootExtras();

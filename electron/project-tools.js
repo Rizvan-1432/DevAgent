@@ -4,6 +4,7 @@ const { execFile } = require('child_process');
 const { promisify } = require('util');
 
 const execFileAsync = promisify(execFile);
+const { isValidCursorApiKey } = require('./env-config');
 
 const HISTORY_MAX = 30;
 
@@ -46,6 +47,8 @@ function checkEnv(envPath) {
   const apiKey = content.match(/^CURSOR_API_KEY=(.+)$/m)?.[1]?.trim();
   if (!apiKey || apiKey === 'your_api_key_here') {
     issues.push('CURSOR_API_KEY не задан');
+  } else if (!isValidCursorApiKey(apiKey)) {
+    issues.push('CURSOR_API_KEY имеет неверный формат');
   }
 
   if (!content.match(/^GITHUB_TOKEN=/m)) {

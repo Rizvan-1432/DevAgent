@@ -28,6 +28,10 @@ const {
   isValidCursorApiKey,
   ensureSdkBinaries,
 } = require('./env-config');
+const { loadPrefs, savePrefs } = require('./prefs');
+const { checkForUpdates } = require('./update-check');
+const os = require('os');
+const pkg = require('../package.json');
 
 let mainWindow = null;
 let sdkConfigured = false;
@@ -50,6 +54,76 @@ async function configureSdk() {
     local: { store: new JsonlLocalAgentStore(getAgentStoreDir()) },
   });
   sdkConfigured = true;
+}
+
+async function validateCursorApiKey(apiKey) {
+  const key = String(apiKey || '').trim();
+  if (!key) {
+    return { ok: false, error: 'Вставьте Cursor API Key' };
+  }
+  if (!isValidCursorApiKey(key)) {
+    return {
+      ok: false,
+      error:
+        'Формат ключа неверный. Нужен ключ с cursor.com → Settings → API Keys (обычно начинается с key_ или crsr_, длиннее 40 символов).',
+    };
+  }
+
+  // Network probe
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    let probe;
+    try {
+      probe = await fetch('https://api2.cursor.sh', { method: 'GET', signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+    if (!probe.ok && probe.status >= 500) {
+      return { ok: false, error: 'Серверы Cursor временно недоступны. Попробуйте позже.' };
+    }
+  } catch {
+    return {
+      ok: false,
+      error: 'Нет интернета или Cursor недоступен. Проверьте сеть / VPN.',
+    };
+  }
+
+  ensureSdkBinaries(app.getPath('userData'));
+  await configureSdk();
+  const { Agent } = await import('@cursor/sdk');
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'dev-agent-keycheck-'));
+
+  try {
+    const agent = await Agent.create({
+      apiKey: key,
+      model: { id: 'composer-2.5' },
+      local: { cwd },
+    });
+    await disposeAgent(agent);
+    return { ok: true, message: 'Ключ рабочий — можно запускать агента' };
+  } catch (err) {
+    const msg = err?.message || String(err);
+    if (/invalid.*api.*key/i.test(msg)) {
+      return {
+        ok: false,
+        error: 'Ключ отклонён Cursor (Invalid API Key). Создайте новый: cursor.com → Settings → API Keys.',
+      };
+    }
+    if (/network request failed|fetch failed|ENOTFOUND|ETIMEDOUT/i.test(msg)) {
+      return {
+        ok: false,
+        error: 'Сеть не дала проверить ключ. Проверьте интернет / VPN и попробуйте снова.',
+      };
+    }
+    return { ok: false, error: msg };
+  } finally {
+    try {
+      fs.rmSync(cwd, { recursive: true, force: true });
+    } catch {
+      /* ignore */
+    }
+  }
 }
 
 function createWindow() {
@@ -233,6 +307,67 @@ ipcMain.handle('save-env-settings', (_e, payload = {}) => {
   } catch (err) {
     return { ok: false, error: err.message || String(err) };
   }
+});
+
+ipcMain.handle('validate-api-key', async (_e, payload = {}) => {
+  const incoming = String(payload.apiKey || '').trim();
+  const apiKey = incoming || readEnvVar(ENV_PATH, 'CURSOR_API_KEY');
+  return validateCursorApiKey(apiKey);
+});
+
+ipcMain.handle('get-onboarding-state', () => {
+  const prefs = loadPrefs(app.getPath('userData'));
+  const settings = getEnvSettings(ENV_PATH);
+  return {
+    done: Boolean(prefs.onboardingDone),
+    hasCursorApiKey: settings.hasCursorApiKey,
+    version: pkg.version,
+  };
+});
+
+ipcMain.handle('complete-onboarding', (_e, payload = {}) => {
+  const prefs = savePrefs(app.getPath('userData'), {
+    onboardingDone: true,
+    onboardingProjectPath: payload.projectPath || '',
+  });
+  return { ok: true, prefs };
+});
+
+ipcMain.handle('reset-onboarding', () => {
+  savePrefs(app.getPath('userData'), { onboardingDone: false });
+  return { ok: true };
+});
+
+ipcMain.handle('get-app-info', () => ({
+  version: pkg.version,
+  name: pkg.productName || 'Dev Agent',
+  isPackaged: app.isPackaged,
+}));
+
+ipcMain.handle('check-updates', async () => {
+  const prefs = loadPrefs(app.getPath('userData'));
+  const result = await checkForUpdates({
+    currentVersion: pkg.version,
+    githubToken: readEnvVar(ENV_PATH, 'GITHUB_TOKEN'),
+    skippedVersion: prefs.skippedUpdateVersion || '',
+  });
+  savePrefs(app.getPath('userData'), { lastUpdateCheckAt: new Date().toISOString() });
+  return result;
+});
+
+ipcMain.handle('skip-update', (_e, payload = {}) => {
+  const version = String(payload.version || '').trim();
+  if (version) savePrefs(app.getPath('userData'), { skippedUpdateVersion: version });
+  return { ok: true };
+});
+
+ipcMain.handle('open-external', async (_e, payload = {}) => {
+  const url = String(payload.url || '').trim();
+  if (!url.startsWith('https://') && !url.startsWith('http://')) {
+    return { ok: false, error: 'Некорректный URL' };
+  }
+  await shell.openExternal(url);
+  return { ok: true };
 });
 
 ipcMain.handle('get-history', () => loadHistory(app.getPath('userData')));
