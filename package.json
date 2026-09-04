@@ -34,6 +34,7 @@
     "files": [
       "electron/**/*",
       "ui/**/*",
+      "kit/**/*",
       "build/icon.png",
       "package.json",
       ".env.example"

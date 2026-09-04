@@ -28,6 +28,7 @@ const updateBannerText = document.getElementById('updateBannerText');
 const btnOpenUpdate = document.getElementById('btnOpenUpdate');
 const btnSkipUpdate = document.getElementById('btnSkipUpdate');
 const btnCheckUpdates = document.getElementById('btnCheckUpdates');
+const btnCheckUpdatesTop = document.getElementById('btnCheckUpdatesTop');
 const btnShowOnboarding = document.getElementById('btnShowOnboarding');
 const appVersionEl = document.getElementById('appVersion');
 const onboardingOverlay = document.getElementById('onboardingOverlay');
@@ -585,27 +586,43 @@ btnSkipUpdate.addEventListener('click', async () => {
   pendingUpdate = null;
 });
 
-btnCheckUpdates.addEventListener('click', async () => {
-  btnCheckUpdates.disabled = true;
-  btnCheckUpdates.textContent = 'Проверяю…';
-  const info = await window.devAgent.checkUpdates();
-  btnCheckUpdates.disabled = false;
-  btnCheckUpdates.textContent = 'Проверить обновления';
-  if (info.updateAvailable) {
-    showUpdateBanner(info);
-    setAppStatus('done', `Обновление ${info.latestVersion}`);
-  } else if (info.ok) {
-    updateBanner.classList.add('hidden');
-    setAppStatus('idle', info.message || 'Актуальная версия');
-    logEl.textContent += `\n${info.message || 'Обновлений нет'}\n`;
-  } else {
-    setAppStatus('error', 'Обновление недоступно');
-    logEl.textContent += `\n⚠️ ${info.error || 'Не удалось проверить обновления'}\n`;
-    if (info.releasesUrl) {
-      logEl.textContent += `Релизы: ${info.releasesUrl}\n`;
-    }
+async function runUpdateCheck(triggerBtn) {
+  const buttons = [btnCheckUpdates, btnCheckUpdatesTop].filter(Boolean);
+  for (const b of buttons) {
+    b.disabled = true;
   }
-});
+  const prevTop = btnCheckUpdatesTop ? btnCheckUpdatesTop.textContent : '';
+  const prevFoot = btnCheckUpdates ? btnCheckUpdates.textContent : '';
+  if (btnCheckUpdatesTop) btnCheckUpdatesTop.textContent = '…';
+  if (btnCheckUpdates) btnCheckUpdates.textContent = 'Проверяю…';
+  try {
+    const info = await window.devAgent.checkUpdates();
+    if (info.updateAvailable) {
+      showUpdateBanner(info);
+      setAppStatus('done', `Обновление ${info.latestVersion}`);
+      logEl.textContent += `\n🆕 ${info.message}\n`;
+    } else if (info.ok) {
+      updateBanner.classList.add('hidden');
+      setAppStatus('idle', info.message || 'Актуальная версия');
+      logEl.textContent += `\n${info.message || 'Обновлений нет'}\n`;
+    } else {
+      setAppStatus('error', 'Обновление недоступно');
+      logEl.textContent += `\n⚠️ ${info.error || 'Не удалось проверить обновления'}\n`;
+      if (info.releasesUrl) {
+        logEl.textContent += `Релизы: ${info.releasesUrl}\n`;
+      }
+    }
+  } finally {
+    for (const b of buttons) b.disabled = false;
+    if (btnCheckUpdatesTop) btnCheckUpdatesTop.textContent = prevTop || 'Обновления';
+    if (btnCheckUpdates) btnCheckUpdates.textContent = prevFoot || 'Проверить обновления';
+  }
+}
+
+btnCheckUpdates.addEventListener('click', () => runUpdateCheck(btnCheckUpdates));
+if (btnCheckUpdatesTop) {
+  btnCheckUpdatesTop.addEventListener('click', () => runUpdateCheck(btnCheckUpdatesTop));
+}
 
 async function bootExtras() {
   try {

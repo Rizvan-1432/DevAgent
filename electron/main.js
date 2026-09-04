@@ -17,6 +17,7 @@ const {
   runProjectTests,
   saveLogToDesktop,
   syncSkills,
+  ensureKitInstalled,
   deployVercel,
 } = require('./project-tools');
 const {
@@ -146,8 +147,9 @@ function createWindow() {
 
 app.whenReady().then(() => {
   ENV_PATH = initEnv(app);
-  KIT_DIR = getKitDir(app);
   ensureSdkBinaries(app.getPath('userData'));
+  ensureKitInstalled(app.getPath('userData'));
+  KIT_DIR = getKitDir(app);
   process.on('unhandledRejection', (reason) => {
     const msg = reason?.message || String(reason);
     if (msg.includes('rg') && msg.includes('ENOENT')) return;
@@ -157,9 +159,13 @@ app.whenReady().then(() => {
 });
 
 function getKitDir(app) {
+  // Packaged: userData/dev-agent-kit (seeded from bundled kit/)
+  // Dev: local kit/ folder inside the app project
   if (app.isPackaged) {
     return path.join(app.getPath('userData'), 'dev-agent-kit');
   }
+  const localKit = path.join(__dirname, '..', 'kit');
+  if (fs.existsSync(path.join(localKit, 'skills', 'dev-agent'))) return localKit;
   return path.join(__dirname, '..', '..');
 }
 
@@ -389,6 +395,8 @@ ipcMain.handle('stop-agent', async () => {
 
 ipcMain.handle('sync-skills', () => {
   try {
+    ensureKitInstalled(app.getPath('userData'));
+    KIT_DIR = getKitDir(app);
     const cursorDir = path.join(require('os').homedir(), '.cursor');
     return { ok: true, message: syncSkills(KIT_DIR, cursorDir) };
   } catch (err) {

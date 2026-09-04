@@ -528,3 +528,14 @@ button.primary.is-running {
   text-align: center;
 }
 .ob-skip:hover { color: #94a3b8; }
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.header-update-btn {
+  padding: 8px 12px;
+  font-size: 0.8rem;
+}
