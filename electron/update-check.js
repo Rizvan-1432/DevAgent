@@ -37,21 +37,36 @@ function pickDmgAsset(assets = []) {
     : null;
 }
 
-async function checkForUpdates({ currentVersion = pkg.version, githubToken = '', skippedVersion = '' } = {}) {
+async function fetchLatestRelease(githubToken = '') {
   const headers = {
     Accept: 'application/vnd.github+json',
     'User-Agent': 'DevAgent-UpdateCheck',
   };
-  if (githubToken) headers.Authorization = `Bearer ${githubToken}`;
+  // Only send token if it looks real (avoid broken short values causing 401)
+  const token = String(githubToken || '').trim();
+  if (token.length >= 20) {
+    headers.Authorization = `Bearer ${token}`;
+  }
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 12000);
-
   try {
-    const res = await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, {
+    return await fetch(`https://api.github.com/repos/${REPO}/releases/latest`, {
       headers,
       signal: controller.signal,
     });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function checkForUpdates({ currentVersion = pkg.version, githubToken = '', skippedVersion = '' } = {}) {
+  try {
+    // Prefer public/unauthenticated access first for public repos.
+    let res = await fetchLatestRelease('');
+    if ((res.status === 401 || res.status === 403) && String(githubToken || '').trim().length >= 20) {
+      res = await fetchLatestRelease(githubToken);
+    }
 
     if (res.status === 404) {
       return {
@@ -69,7 +84,7 @@ async function checkForUpdates({ currentVersion = pkg.version, githubToken = '',
         updateAvailable: false,
         currentVersion,
         error:
-          'Нет доступа к релизам (репозиторий private). Добавьте GITHUB_TOKEN или сделайте репо публичным.',
+          'Нет доступа к релизам GitHub. Репозиторий должен быть public, либо укажите рабочий GITHUB_TOKEN (длинный токен, не короткий текст).',
         releasesUrl: RELEASES_URL,
       };
     }
@@ -125,8 +140,6 @@ async function checkForUpdates({ currentVersion = pkg.version, githubToken = '',
       error: msg,
       releasesUrl: RELEASES_URL,
     };
-  } finally {
-    clearTimeout(timer);
   }
 }
 

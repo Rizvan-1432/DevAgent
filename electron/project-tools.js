@@ -180,26 +180,42 @@ function syncSkills(kitDir, cursorDir) {
 }
 
 /** Copy bundled kit into userData so packaged .app has a local kit. */
+function mirrorLegacyCursorLayout(target) {
+  // Old builds looked for kit/.cursor/skills/dev-agent — keep compatibility.
+  const modern = path.join(target, 'skills', 'dev-agent');
+  const legacy = path.join(target, '.cursor', 'skills', 'dev-agent');
+  if (!fs.existsSync(modern)) return;
+  fs.mkdirSync(path.dirname(legacy), { recursive: true });
+  if (!fs.existsSync(path.join(legacy, 'SKILL.md'))) {
+    fs.cpSync(modern, legacy, { recursive: true });
+  }
+  const rulesModern = path.join(target, 'rules');
+  const rulesLegacy = path.join(target, '.cursor', 'rules');
+  if (fs.existsSync(rulesModern)) {
+    fs.mkdirSync(rulesLegacy, { recursive: true });
+    fs.cpSync(rulesModern, rulesLegacy, { recursive: true });
+  }
+}
+
 function ensureKitInstalled(userDataDir) {
   const target = path.join(userDataDir, 'dev-agent-kit');
   const bundled = path.join(__dirname, '..', 'kit');
   const marker = path.join(target, 'skills', 'dev-agent', 'SKILL.md');
-  if (fs.existsSync(marker)) return target;
 
-  if (fs.existsSync(path.join(bundled, 'skills', 'dev-agent'))) {
-    fs.mkdirSync(target, { recursive: true });
-    fs.cpSync(bundled, target, { recursive: true });
-    return target;
+  if (!fs.existsSync(marker)) {
+    if (fs.existsSync(path.join(bundled, 'skills', 'dev-agent'))) {
+      fs.mkdirSync(target, { recursive: true });
+      fs.cpSync(bundled, target, { recursive: true });
+    } else {
+      const globalSkills = path.join(require('os').homedir(), '.cursor', 'skills', 'dev-agent');
+      if (fs.existsSync(globalSkills)) {
+        fs.mkdirSync(path.join(target, 'skills'), { recursive: true });
+        fs.cpSync(globalSkills, path.join(target, 'skills', 'dev-agent'), { recursive: true });
+      }
+    }
   }
 
-  // Last resort: mirror from global ~/.cursor
-  const globalSkills = path.join(require('os').homedir(), '.cursor', 'skills', 'dev-agent');
-  if (fs.existsSync(globalSkills)) {
-    fs.mkdirSync(path.join(target, 'skills'), { recursive: true });
-    fs.cpSync(globalSkills, path.join(target, 'skills', 'dev-agent'), { recursive: true });
-    return target;
-  }
-
+  mirrorLegacyCursorLayout(target);
   return target;
 }
 
