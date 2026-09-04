@@ -1,0 +1,42 @@
+{
+  "name": "dev-agent-app",
+  "version": "2.1.0",
+  "description": "Dev Agent desktop app",
+  "main": "electron/main.js",
+  "private": true,
+  "author": "Бакаев Ризван Русланович",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --mac",
+    "build:dir": "electron-builder --mac dir",
+    "postinstall": "node scripts/fix-rg.js"
+  },
+  "dependencies": {
+    "@cursor/sdk": "^1.0.0",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.devagent.app",
+    "productName": "Dev Agent",
+    "icon": "build/icon.png",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": ["dmg", "zip"]
+    },
+    "files": [
+      "electron/**/*",
+      "ui/**/*",
+      "build/icon.png",
+      "package.json",
+      ".env.example"
+    ]
+  }
+}

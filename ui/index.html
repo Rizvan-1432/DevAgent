@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dev Agent</title>
+  <link rel="icon" href="../build/icon.png" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="header-row">
+        <div>
+          <h1>Dev Agent</h1>
+          <p class="subtitle">Выберите проект → режим → Начать</p>
+        </div>
+        <div id="appStatus" class="app-status idle" aria-live="polite">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="appStatusText">Готов</span>
+        </div>
+      </div>
+    </header>
+
+    <div id="envBanner" class="env-banner hidden">
+      <span id="envBannerText"></span>
+      <div class="banner-actions">
+        <button type="button" id="btnOpenSettings" class="link-btn">Добавить API</button>
+        <button type="button" id="btnOpenEnv" class="link-btn ghost">Открыть .env</button>
+      </div>
+    </div>
+
+    <section class="settings" id="apiSettings">
+      <div class="settings-head">
+        <label>API-ключи</label>
+        <button type="button" id="btnToggleSettings" class="link-btn ghost">Свернуть</button>
+      </div>
+      <div id="settingsBody" class="settings-body">
+        <p class="hint settings-hint">
+          Вставьте ключ Cursor и нажмите «Сохранить» — приложение сразу сможет запускать агента.
+          Пустое поле = не менять уже сохранённый ключ.
+        </p>
+        <div class="field">
+          <label for="cursorApiKey">Cursor API Key <span id="cursorStatus" class="status-pill"></span></label>
+          <input type="password" id="cursorApiKey" autocomplete="off" placeholder="Вставьте ключ Cursor…" />
+        </div>
+        <div class="field">
+          <label for="githubToken">GitHub Token <span id="githubStatus" class="status-pill"></span></label>
+          <input type="password" id="githubToken" autocomplete="off" placeholder="Опционально, для push…" />
+        </div>
+        <div class="field">
+          <label for="vercelToken">Vercel Token <span id="vercelStatus" class="status-pill"></span></label>
+          <input type="password" id="vercelToken" autocomplete="off" placeholder="Опционально, для деплоя…" />
+        </div>
+        <div class="settings-actions">
+          <button type="button" id="btnSaveSettings" class="primary">Сохранить ключи</button>
+          <span id="settingsSaved" class="hint"></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="project">
+      <label>Папка проекта</label>
+      <div class="row">
+        <input type="text" id="projectPath" readonly placeholder="Не выбрана" />
+        <button type="button" id="btnPick" class="secondary">Выбрать</button>
+      </div>
+      <select id="historySelect" class="history-select hidden">
+        <option value="">— Недавние проекты —</option>
+      </select>
+    </section>
+
+    <section class="modes">
+      <label>Режим</label>
+      <div class="mode-grid">
+        <label class="mode"><input type="radio" name="mode" value="check" checked /> Проверить</label>
+        <label class="mode"><input type="radio" name="mode" value="seo" /> SEO</label>
+        <label class="mode"><input type="radio" name="mode" value="seo-content" /> SEO+тексты</label>
+        <label class="mode"><input type="radio" name="mode" value="content" /> Контент</label>
+        <label class="mode"><input type="radio" name="mode" value="competitors" /> Конкуренты</label>
+        <label class="mode"><input type="radio" name="mode" value="security" /> Безопасность</label>
+        <label class="mode"><input type="radio" name="mode" value="release" /> Релиз</label>
+        <label class="mode"><input type="radio" name="mode" value="status" /> Статус</label>
+        <label class="mode"><input type="radio" name="mode" value="monitoring" /> Мониторинг</label>
+        <label class="mode"><input type="radio" name="mode" value="translate" /> Перевод</label>
+        <label class="mode"><input type="radio" name="mode" value="analytics" /> Аналитика</label>
+        <label class="mode"><input type="radio" name="mode" value="custom" /> Своя задача</label>
+      </div>
+    </section>
+
+    <section id="customSection" class="custom-task hidden">
+      <label>Своя задача</label>
+      <textarea id="customPrompt" rows="3" placeholder="Опишите что сделать..."></textarea>
+    </section>
+
+    <section class="options">
+      <label class="checkbox"><input type="checkbox" id="pushGitHub" /> GitHub после работы</label>
+      <label class="checkbox"><input type="checkbox" id="previewDiff" checked /> Показать diff перед push</label>
+      <label class="checkbox"><input type="checkbox" id="deployVercel" /> Деплой на Vercel после push</label>
+      <label class="checkbox"><input type="checkbox" id="requireTests" checked /> Не пушить если тесты упали</label>
+      <label class="checkbox row-inline">
+        Лимит файлов:
+        <input type="number" id="maxFiles" value="25" min="1" max="200" />
+      </label>
+    </section>
+
+    <div class="actions">
+      <button type="button" id="btnStart" class="primary">
+        <span id="btnStartLabel">Начать</span>
+        <span id="btnStartSpinner" class="btn-spinner hidden" aria-hidden="true"></span>
+      </button>
+      <button type="button" id="btnStop" class="danger" disabled>Стоп</button>
+      <button type="button" id="btnSaveLog" class="secondary">Сохранить лог</button>
+      <button type="button" id="btnRollback" class="secondary">Откат коммита</button>
+      <button type="button" id="btnSyncSkills" class="secondary">Обновить skills</button>
+    </div>
+
+    <div id="progressBar" class="progress hidden">
+      <div class="progress-top">
+        <div class="progress-left">
+          <span class="spinner" aria-hidden="true"></span>
+          <div id="progressLabel">Готов</div>
+          <span id="progressDots" class="dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span>
+        </div>
+        <div id="progressTimer" class="progress-timer">0:00</div>
+      </div>
+      <div class="progress-track indeterminate"><div id="progressFill"></div></div>
+      <p id="progressHint" class="progress-hint">Агент работает — подождите, это может занять несколько минут</p>
+    </div>
+
+    <section class="log-wrap">
+      <div class="log-head">
+        <label>Результат</label>
+        <span id="logLiveBadge" class="live-badge hidden">● идёт работа</span>
+      </div>
+      <pre id="log">Здесь появится отчёт на русском...</pre>
+    </section>
+  </div>
+
+  <dialog id="diffModal">
+    <h2>Изменения перед отправкой</h2>
+    <pre id="diffContent"></pre>
+    <p id="diffFiles" class="hint"></p>
+    <div class="modal-actions">
+      <button type="button" id="btnCancelPush" class="secondary">Отмена</button>
+      <button type="button" id="btnConfirmPush" class="primary">Отправить на GitHub</button>
+    </div>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
